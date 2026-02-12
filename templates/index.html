@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Movimento RTSP</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎥 Monitor de Movimento RTSP</h1>
+        </header>
+
+        <div class="controls">
+            <div class="input-group">
+                <label for="rtsp-url">URL da Câmera RTSP:</label>
+                <input type="text" id="rtsp-url" placeholder="rtsp://usuario:senha@ip:porta/stream">
+            </div>
+            
+            <div class="button-group">
+                <button id="start-btn" class="btn btn-start">▶️ Iniciar</button>
+                <button id="stop-btn" class="btn btn-stop" disabled>⏹️ Parar</button>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div id="status" class="status">🔴 Desconectado</div>
+            <div id="motion-indicator" class="motion-indicator">👁️ Sem movimento</div>
+        </div>
+
+        <div class="video-container">
+            <div id="video-placeholder" class="video-placeholder">
+                <span>📹 Stream aparecerá aqui</span>
+            </div>
+            <div id="video-loading" class="video-loading" style="display: none;">
+                <div class="spinner"></div>
+                <span>Conectando à câmera...</span>
+            </div>
+            <img id="video-stream" class="video-stream" style="display: none;" alt="Stream de vídeo">
+        </div>
+
+        <div class="motion-log">
+            <h3>📊 Log de Movimentos</h3>
+            <div id="motion-list" class="motion-list">
+                <p class="no-motion">Nenhum movimento detectado ainda</p>
+            </div>
+        </div>
+
+        <!-- Som de alerta (silenciado por padrão) -->
+        <audio id="alert-sound" preload="auto">
+            <source src="/static/alert.mp3" type="audio/mpeg">
+            <source src="/static/alert.wav" type="audio/wav">
+            <!-- Som de backup gerado via JavaScript -->
+        </audio>
+    </div>
+
+    <!-- Modal para exibir screenshot -->
+    <div id="screenshot-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3 id="modal-title">Screenshot do Movimento</h3>
+            <img id="modal-image" src="" alt="Screenshot do movimento">
+            <p id="modal-info"></p>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
