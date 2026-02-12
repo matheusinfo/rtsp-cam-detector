@@ -5,6 +5,10 @@ module.exports = {
   HOST: process.env.HOST || '0.0.0.0',
   PORT: parseInt(process.env.PORT, 10) || 5000,
 
+  // Configurações RTSP
+  DEFAULT_RTSP_URL: process.env.DEFAULT_RTSP_URL || 'rtsp://admin:admin123@192.168.1.100:554/stream',
+  AUTO_START_STREAM: process.env.AUTO_START_STREAM === 'true' || true,
+
   // Configurações de detecção de movimento
   MOTION_THRESHOLD: parseInt(process.env.MOTION_THRESHOLD, 10) || 5000,
   STREAM_FPS: parseInt(process.env.STREAM_FPS, 10) || 10,

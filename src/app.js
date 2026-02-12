@@ -28,7 +28,18 @@ app.use('/screenshots', express.static(screenshotsDir));
 
 // Rota principal
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'templates', 'index.html'));
+  const htmlPath = path.join(__dirname, '..', 'templates', 'index.html');
+  let html = fs.readFileSync(htmlPath, 'utf8');
+
+  // Se DEFAULT_RTSP_URL estiver definida, usar como valor padrão
+  if (config.DEFAULT_RTSP_URL) {
+    html = html.replace(
+      'placeholder="rtsp://usuario:senha@ip:porta/stream"',
+      `placeholder="rtsp://usuario:senha@ip:porta/stream" value="${config.DEFAULT_RTSP_URL}"`
+    );
+  }
+
+  res.send(html);
 });
 
 // Rota para obter screenshot
@@ -74,61 +85,9 @@ io.on('connection', (socket) => {
   // Iniciar stream
   socket.on('start_stream', async (data) => {
     try {
-      const rtspUrl = data?.rtsp_url;
+      const rtspUrl = data?.rtsp_url || config.DEFAULT_RTSP_URL;
       
-      if (!rtspUrl) {
-        socket.emit('error', { message: 'URL RTSP não informada' });
-        return;
-      }
-      
-      console.log(`🎥 Iniciando stream: ${rtspUrl}`);
-
-      // Para o detector anterior se existir
-      if (motionDetector) {
-        stopStreaming();
-      }
-
-      // Cria novo detector
-      motionDetector = new MotionDetector(rtspUrl);
-      
-      // Callback para detecção de movimento
-      motionDetector.onMotion((level) => {
-        const timestamp = Date.now();
-        const filename = `motion_${timestamp}.jpg`;
-        
-        // Salva screenshot
-        const frame = motionDetector.getCurrentFrameBuffer();
-        if (frame) {
-          const filePath = path.join(screenshotsDir, filename);
-          fs.writeFile(filePath, frame, (err) => {
-            if (err) {
-              console.error('Erro ao salvar screenshot:', err);
-            } else {
-              console.log(`📸 Screenshot salva: ${filename}`);
-            }
-          });
-        }
-        
-        io.emit('motion_detected', { 
-          timestamp: timestamp,
-          level: level,
-          screenshot: filename
-        });
-      });
-
-      await motionDetector.start();
-      streaming = true;
-
-      // Intervalo para enviar frames
-      streamInterval = setInterval(() => {
-        if (streaming && motionDetector) {
-          const frame = motionDetector.getCurrentFrame();
-          if (frame) {
-            io.emit('new_frame', { frame });
-          }
-        }
-      }, 1000 / config.STREAM_FPS);
-
+      await startStreaming(rtspUrl);
       socket.emit('stream_started', { success: true });
 
     } catch (err) {
@@ -149,6 +108,55 @@ io.on('connection', (socket) => {
     console.log('👋 Cliente desconectado:', socket.id);
   });
 });
+
+/**
+ * Inicia o streaming com uma URL RTSP
+ */
+async function startStreaming(rtspUrl) {
+  // Para o detector anterior se existir
+  if (motionDetector) {
+    stopStreaming();
+  }
+
+  // Cria novo detector
+  motionDetector = new MotionDetector(rtspUrl);
+
+  // Callback para detecção de movimento
+  motionDetector.onMotion((level) => {
+    const timestamp = Date.now();
+    const filename = `motion_${timestamp}.jpg`;
+
+    // Salva screenshot
+    const frame = motionDetector.getCurrentFrameBuffer();
+    if (frame) {
+      const filePath = path.join(screenshotsDir, filename);
+      fs.writeFile(filePath, frame, (err) => {
+        if (err) {
+          console.error('Erro ao salvar screenshot:', err);
+        }
+      });
+    }
+
+    io.emit('motion_detected', {
+      timestamp: timestamp,
+      level: level,
+      screenshot: filename
+    });
+  });
+
+  await motionDetector.start();
+  streaming = true;
+
+  // Intervalo para enviar frames
+  streamInterval = setInterval(() => {
+    if (streaming && motionDetector) {
+      const frame = motionDetector.getCurrentFrame();
+      if (frame) {
+        io.emit('new_frame', { frame });
+      }
+    }
+  }, 1000 / config.STREAM_FPS);
+}
 
 /**
  * Para o streaming e limpa recursos
@@ -204,10 +212,17 @@ process.on('SIGTERM', () => {
 });
 
 // Inicia o servidor
-server.listen(config.PORT, config.HOST, () => {
-  console.log('🎥 Iniciando Monitor de Movimento RTSP (Node.js)...');
-  console.log(`🌐 Servidor: http://${config.HOST === '0.0.0.0' ? 'localhost' : config.HOST}:${config.PORT}`);
-  console.log('📱 Acesse a interface web no navegador');
-  console.log('🔊 Clique uma vez na página para habilitar alertas sonoros');
-  console.log('⏹️  Pressione Ctrl+C para parar');
+server.listen(config.PORT, config.HOST, async () => {
+  console.log(`🎥 RTSP Monitor - Servidor: http://${config.HOST === '0.0.0.0' ? 'localhost' : config.HOST}:${config.PORT}`);
+
+  // Auto-inicialização do streaming se configurado
+  if (config.AUTO_START_STREAM && config.DEFAULT_RTSP_URL) {
+    try {
+      console.log(`🚀 Auto-iniciando stream: ${config.DEFAULT_RTSP_URL}`);
+      await startStreaming(config.DEFAULT_RTSP_URL);
+      console.log('✅ Stream iniciado automaticamente');
+    } catch (err) {
+      console.error(`❌ Erro no auto-start: ${err.message}`);
+    }
+  }
 });

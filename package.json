@@ -5,7 +5,13 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop rtsp-cam-detector",
+    "pm2:restart": "pm2 restart rtsp-cam-detector",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs rtsp-cam-detector",
+    "pm2:monit": "pm2 monit"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
